@@ -92,6 +92,7 @@ var resetApplication = function() {
 
   state.markers = []
   state.line = undefined;
+  locations=[]
   $('#button-reset').hide();
 }
 
@@ -102,11 +103,34 @@ On draw
 
 Leaflet Draw runs every time a marker is added to the map. When this happens
 ---------------- */
-
+var locations=[];
 map.on('draw:created', function (e) {
   var type = e.layerType; // The type of shape
   var layer = e.layer; // The Leaflet layer for the shape
   var id = L.stamp(layer); // The unique Leaflet ID for the
-
-  console.log('Do something with the layer you just created:', layer, layer._latlng);
+  var lat = e.layer._latlng.lat;
+  var lng = e.layer._latlng.lng;
+  marker = L.marker([lat, lng]);
+  state.markers.push(marker);
+  if(state.markers.length ===2){$('#button-reset').show();};
+  locations.push([lat,lng]);
+  var coordinates = ``
+  for(var i = 0; i< locations.length; i++){
+    if(i ===0){coordinates = `${locations[i][1]},${locations[i][0]}`;}else{
+      coordinates = coordinates + `;${locations[i][1]},${locations[i][0]}`;
+    };
+    state.markers[i].addTo(map);
+  };
+  var mapbox_token = "pk.eyJ1IjoibXl6aGFuZzk2OTYiLCJhIjoiY2s4dWxteHVqMDNkYjNlbXRjMzhtb3N4diJ9.e1rj88wCqjKaKzMZA5UvAA";
+  if( locations.length >= 2){
+    $.ajax(`https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordinates}.json?access_token=${mapbox_token}`).done(function(e) {
+      if(typeof(route_map)!=="undefined"){map.removeLayer(route_map);};
+      line = polyline.decode(e.trips[0].geometry);
+      reverse = _.map(line, function(location) {return [location[1],location[0]];});
+      route = turf.lineString(reverse);
+      if( typeof(state.line) !== "undefined"){ map.removeLayer(state.line);};
+      state.line = L.geoJSON(route);
+      state.line.addTo(map);
+    });
+  };
 });
