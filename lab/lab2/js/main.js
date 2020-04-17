@@ -115,7 +115,7 @@ Task 6 (stretch): Refocus the map to roughly the bounding box of your route
 
 
 ===================== */
-
+var test;
 var state = {
   position: {
     marker: null,
@@ -142,10 +142,14 @@ var updatePosition = function(lat, lng, updated) {
   goToOrigin(lat, lng);
 };
 
+var lat_1,lng_1,lat_2,lat_2;
+
 $(document).ready(function() {
   /* This 'if' check allows us to safely ask for the user's current position */
   if ("geolocation" in navigator) {
     navigator.geolocation.getCurrentPosition(function(position) {
+      lat_1 = position.coords.latitude;
+      lng_1 = position.coords.longitude;
       updatePosition(position.coords.latitude, position.coords.longitude, position.timestamp);
     });
   } else {
@@ -168,7 +172,23 @@ $(document).ready(function() {
   $("#calculate").click(function(e) {
     var dest = $('#dest').val();
     console.log(dest);
+    var mapbox_token = "pk.eyJ1IjoibXl6aGFuZzk2OTYiLCJhIjoiY2s4dWxteHVqMDNkYjNlbXRjMzhtb3N4diJ9.e1rj88wCqjKaKzMZA5UvAA";
+    $.ajax(`https://api.mapbox.com/geocoding/v5/mapbox.places/${dest}.json?access_token=${mapbox_token}`).done(function(data) {
+
+      if(typeof(marker)!=="undefined"){map.removeLayer(marker);};
+      lat_2 = data.features[0].center[1];
+      lng_2 = data.features[0].center[0];
+      marker = L.circleMarker([lat_2, lng_2], {color: "orange"});
+      marker.addTo(map);
+      $.ajax(`https://api.mapbox.com/directions/v5/mapbox/driving/${lng_1},${lat_1};${lng_2},${lat_2}.json?access_token=${mapbox_token}`).done(function(e) {
+        if(typeof(route_map)!=="undefined"){map.removeLayer(route_map);};
+        line = polyline.decode(e.routes[0].geometry);
+        reverse = _.map(line, function(location) {return [location[1],location[0]];});
+        route = turf.lineString(reverse);
+        route_map = L.geoJSON(route);
+        route_map.addTo(map);
+      });
+
+    });
   });
-
 });
-
